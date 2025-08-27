@@ -19,7 +19,7 @@
               <a class="nav-link" href="#" @click.prevent="goTo('/')">Home</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="#" @click.prevent="goTo('/users')">Users</a>
+              <a class="nav-link" href="#" @click.prevent="goToUsers()">Users</a>
             </li>
           </ul>
         </div>
@@ -28,10 +28,10 @@
 
     <!-- Main content -->
     <div class="flex-grow-1">
-      <!-- Home / Login Page -->
-      <div v-if="route === '/' " class="container flex-grow-1 my-5">
+      <!-- Home / Login -->
+      <div v-if="route === '/'" class="container flex-grow-1 my-5">
         <div class="row align-items-center">
-          <!-- Left flex (Welcome / CTA) -->
+          <!-- Left flex -->
           <div class="col-lg-6 mb-4 mb-lg-0">
             <h1 class="display-4">Welcome to MyApp</h1>
             <p class="lead">
@@ -39,7 +39,7 @@
             </p>
           </div>
 
-          <!-- Right flex (Login block) -->
+          <!-- Right flex -->
           <div class="col-lg-6 d-flex justify-content-center">
             <div class="card shadow-sm p-4 w-100" style="max-width: 400px;">
               <h1 class="text-center mb-4">Login</h1>
@@ -84,10 +84,11 @@
       <div v-else-if="route === '/users'" class="container my-5">
         <h1 class="mb-4">Users Page</h1>
         <div class="row">
-          <div class="col-md-4 mb-3" v-for="i in 6" :key="i">
+          <div class="col-md-4 mb-3" v-for="user in users" :key="user.id">
             <div class="card shadow-sm p-3">
-              <h5>User {{ i }}</h5>
-              <p>Email placeholder</p>
+              <h5>{{ user.name }}</h5>
+              <p>{{ user.email }}</p>
+              <p><strong>Role:</strong> {{ user.role }}</p>
             </div>
           </div>
         </div>
@@ -105,42 +106,70 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { navigateTo } from '#app'
 
-// SPA route state
-const route = ref(window.location.pathname)
+// SPA state
+const route = ref('/')           // default SSR-safe route
 const isOpen = ref(false)
 
-// Login form
+// Login state
 const email = ref('')
 const password = ref('')
 const error = ref('')
 
+// Users data
+const users = ref([])            // will load JSON
+const currentUser = ref(null)    // logged-in user
+
+// Load users.json (only in client)
+onMounted(async () => {
+  if (process.client) {
+    const res = await fetch('/users.json')
+    users.value = await res.json()
+
+    // Set route from window after hydration
+    route.value = window.location.pathname
+
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', () => {
+      route.value = window.location.pathname
+    })
+  }
+})
+
+// Login logic
 const handleLogin = () => {
-  if (email.value === 'test@example.com' && password.value === 'password') {
+  const user = users.value.find(
+    u => u.email === email.value && u.password === password.value
+  )
+
+  if (user) {
+    currentUser.value = user
     error.value = ''
-    navigateTo('/dashboard')
+    route.value = '/'  // navigate to home after login
+    alert(`Logged in as ${user.name}`)
   } else {
     error.value = 'Invalid email or password'
   }
 }
 
-// Manual SPA navigation
+// SPA navigation
 const goTo = (path) => {
   route.value = path
-  window.history.pushState({}, '', path)
+  if (process.client) window.history.pushState({}, '', path)
 }
 
-// Handle browser back/forward buttons
-onMounted(() => {
-  window.addEventListener('popstate', () => {
-    route.value = window.location.pathname
-  })
-})
+// Only admins can access users page
+const goToUsers = () => {
+  if (currentUser.value?.role === 'admin') {
+    goTo('/users')
+  } else {
+    alert('Access denied. Only admins can view this page.')
+  }
+}
 </script>
 
 <style scoped>
-/* Login card responsive adjustments */
+/* Responsive adjustments */
 @media (max-width: 400px) {
   .card {
     margin: 1rem;
