@@ -1,8 +1,9 @@
 # Node modules
 node_modules/
 
-# Nuxt build
+# Nuxt build & output
 .nuxt/
+.output/
 dist/
 
 # Logs
@@ -15,10 +16,26 @@ pnpm-debug.log*
 .env.local
 .env.*.local
 
-# IDE files
+# Test coverage & cache
+coverage/
+.vitest/
+test-results/
+*.lcov
+
+# IDE / Editor files
 .vscode/
 .idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sw?
+*.code-workspace
 
 # OS files
 .DS_Store
 Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
