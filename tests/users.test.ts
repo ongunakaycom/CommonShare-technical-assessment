@@ -29,7 +29,7 @@ const users = [
 
 describe('Users.vue', () => {
   beforeEach(() => {
-    // Stub global fetch to prevent real network requests
+    // Mock fetch globally for the test to avoid /users.json errors
     global.fetch = vi.fn(() =>
       Promise.resolve({
         json: () => Promise.resolve([])
@@ -38,19 +38,21 @@ describe('Users.vue', () => {
   })
 
   it('renders all users passed via initialUsers prop', async () => {
-    const wrapper = mount(Users, { props: { initialUsers: users } })
+    const wrapper = mount(Users, {
+      props: { initialUsers: users }
+    })
 
-    // Wait for the DOM to update
+    // Wait for DOM to update after mount
     await wrapper.vm.$nextTick()
 
     const text = wrapper.text()
 
-    // Verify each user name appears
+    // Check each user is rendered
     users.forEach(user => {
       expect(text).toContain(user.name)
     })
 
-    // Verify table row count
+    // Check table rows count
     const rows = wrapper.findAll('tbody tr')
     expect(rows).toHaveLength(users.length)
   })
