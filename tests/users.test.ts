@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import Users from '../app/users.vue'
 import { describe, it, expect } from 'vitest'
 
-// All JSON data hardcoded in the test
+// All 20 users
 const users = [
   { id: 1, name: 'Alice Johnson', email: 'alice.johnson@example.com', password: 'pass123', role: 'admin', country: 'USA' },
   { id: 2, name: 'Bob Smith', email: 'bob.smith@example.com', password: 'pass123', role: 'user', country: 'UK' },
@@ -28,19 +28,18 @@ const users = [
 ]
 
 describe('Users.vue', () => {
-  it('renders all users from JSON', async () => {
+  it('renders all users passed via initialUsers prop', () => {
     const wrapper = mount(Users, { props: { initialUsers: users } })
-
-    await wrapper.vm.$nextTick()
 
     const text = wrapper.text()
 
-    // Verify some known users
-    expect(text).toContain('Alice Johnson')
-    expect(text).toContain('Bob Smith')
-    expect(text).toContain('Charlie Brown')
+    // Verify that each user name appears in the rendered output
+    users.forEach(user => {
+      expect(text).toContain(user.name)
+    })
 
-    // Optional: verify total users
-    expect(users.length).toBe(20)
+    // Verify total rendered table rows (users)
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows).toHaveLength(users.length)
   })
 })
