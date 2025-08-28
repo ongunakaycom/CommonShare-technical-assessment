@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { describe, it, expect } from 'vitest'
 import App from '../app/app.vue'
 
-// All 20 users
+// Hardcoded users
 const users = [
   { id: 1, name: 'Alice Johnson', email: 'alice.johnson@example.com', password: 'pass123', role: 'admin', country: 'USA' },
   { id: 2, name: 'Bob Smith', email: 'bob.smith@example.com', password: 'pass123', role: 'user', country: 'UK' },
@@ -28,29 +28,29 @@ const users = [
 ]
 
 describe('App.vue - login all users', () => {
+  const loginAndAssert = async (wrapper: any, user: typeof users[0]) => {
+    // Fill login form
+    await wrapper.setData({ email: user.email, password: user.password })
+    await wrapper.find('form').trigger('submit.prevent')
+
+    const vm = wrapper.vm as any
+
+    // Assert login success
+    expect(vm.currentUser).toBeDefined()
+    expect(vm.currentUser.email).toBe(user.email)
+    expect(vm.route).toBe('/dashboard')
+
+    // Logout
+    await wrapper.find('button.btn-outline-danger').trigger('click')
+    expect(vm.currentUser).toBeNull()
+    expect(vm.route).toBe('/')
+  }
+
   it('should allow all users to log in successfully', async () => {
-    const wrapper = mount(App, {
-      data() {
-        return { users }
-      }
-    })
+    const wrapper = mount(App, { data: () => ({ users }) })
 
     for (const user of users) {
-      // Fill login form
-      await wrapper.setData({ email: user.email, password: user.password })
-      await wrapper.find('form').trigger('submit.prevent')
-
-      const vm = wrapper.vm as any  // <-- cast to any to access currentUser, route
-
-      // Assert login success
-      expect(vm.currentUser).toBeDefined()
-      expect(vm.currentUser.email).toBe(user.email)
-      expect(vm.route).toBe('/dashboard')
-
-      // Logout before next iteration
-      await wrapper.find('button.btn-outline-danger').trigger('click')
-      expect(vm.currentUser).toBeNull()
-      expect(vm.route).toBe('/')
+      await loginAndAssert(wrapper, user)
     }
   })
 })
