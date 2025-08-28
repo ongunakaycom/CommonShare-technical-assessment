@@ -51,9 +51,8 @@ onMounted(async () => {
     route.value = window.location.pathname
 
     window.addEventListener('popstate', () => {
-      // Prevent going back to '/' after login
       if (currentUser.value && window.location.pathname === '/') {
-        const redirect = currentUser.value.role === 'admin' ? '/dashboard' : '/users'
+        const redirect = isAdmin.value ? '/dashboard' : '/users'
         window.history.replaceState({}, '', redirect)
         route.value = redirect
       } else {
@@ -66,15 +65,16 @@ onMounted(async () => {
 // Login
 const handleLogin = () => {
   const user = users.value.find(u => u.email === email.value && u.password === password.value)
-  if (!user) { error.value = 'Invalid email or password'; return }
+  if (!user) { 
+    error.value = 'Invalid email or password'
+    return 
+  }
 
   currentUser.value = user
   error.value = ''
-  const redirect = user.role === 'admin' ? '/dashboard' : '/users'
+  const redirect = isAdmin.value ? '/dashboard' : '/users'
   route.value = redirect
-  if (process.client) {
-    window.history.replaceState({}, '', redirect)  // replace '/' in history
-  }
+  if (process.client) window.history.replaceState({}, '', redirect)
 }
 
 // Logout
@@ -84,30 +84,53 @@ const handleLogout = () => {
   if (process.client) window.history.pushState({}, '', '/')
 }
 
-// SPA navigation (navbar links)
+// SPA navigation
 const goTo = path => {
-  if (currentUser.value) {
-    // Prevent logged-in users from going back to '/' (Home)
-    if (path === '/') return
-    // Admins: allow dashboard link
-    if (path === '/dashboard' && isAdmin.value) {
-      route.value = path
-      if (process.client) window.history.pushState({}, '', path)
-    }
-  } else {
-    // Not logged in: allow Home
+  if (!currentUser.value) {
+    // Not logged in → normal navigation
     route.value = path
     if (process.client) window.history.pushState({}, '', path)
+    return
+  }
+
+  // Logged-in user navigation
+  if (path === '/') {
+    if (isAdmin.value) {
+      // Admin → dashboard
+      route.value = '/dashboard'
+      if (process.client) window.history.pushState({}, '', '/dashboard')
+    } 
+    // Regular user → do NOTHING (acts like "#")
+    return
+  } 
+
+  // Other routes
+  if (path === '/dashboard' && isAdmin.value) {
+    route.value = '/dashboard'
+    if (process.client) window.history.pushState({}, '', '/dashboard')
+  } else if (path === '/users' && !isAdmin.value) {
+    route.value = '/users'
+    if (process.client) window.history.pushState({}, '', '/users')
   }
 }
 
-// Users link (admin only)
+// Admin-only users page
 const goToUsers = () => {
-  if (currentUser.value?.role === 'admin') {
-    route.value = '/dashboard'
-    if (process.client) window.history.pushState({}, '', '/dashboard')
+  if (isAdmin.value) {
+    goTo('/dashboard')
   } else {
     alert('Access denied. Only admins can view this page.')
   }
 }
 </script>
+
+<!-- Navbar -->
+<nav>
+  <!-- MyApp / Home -->
+  <a href="#" @click.prevent="goTo('/')">MyApp</a>
+
+  <a v-if="isAdmin" href="#" @click.prevent="goTo('/dashboard')">Dashboard</a>
+  <a v-else-if="currentUser" href="#" @click.prevent="goTo('/users')">Users</a>
+  <a v-if="currentUser" href="#" @click.prevent="handleLogout">Logout</a>
+  <a v-else href="#" @click.prevent="goTo('/')">Login</a>
+</nav>

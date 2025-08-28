@@ -3,6 +3,7 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
       <div class="container">
+        <!-- MyApp / Home -->
         <a class="navbar-brand" href="#" @click.prevent="goTo('/')">MyApp</a>
         <button
           class="navbar-toggler"
@@ -15,12 +16,15 @@
 
         <div :class="['collapse navbar-collapse', { show: isOpen }]">
           <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
+            <!-- Home link for guests only -->
+            <li class="nav-item" v-if="!currentUser">
               <a class="nav-link" href="#" @click.prevent="goTo('/')">Home</a>
             </li>
+
             <template v-if="currentUser">
+              <!-- Admin-only Users link -->
               <li class="nav-item" v-if="currentUser.role === 'admin'">
-                <a class="nav-link" href="#" @click.prevent="goTo('/users')">Users</a>
+                <a class="nav-link" href="#" @click.prevent="goTo('/dashboard')">Users</a>
               </li>
               <li class="nav-item">
                 <button class="btn btn-outline-danger ms-2" @click="handleLogout">Logout</button>
@@ -60,7 +64,7 @@
         </div>
       </div>
 
-      <!-- Users Page (Dashboard stats visible to all users) -->
+      <!-- Users / Dashboard Page -->
       <div v-else-if="route === '/users' || route === '/dashboard'" class="container my-5">
         <h1 v-if="route === '/dashboard' && currentUser.role === 'admin'">Admin Dashboard</h1>
         <h1 v-else>User Dashboard</h1>
@@ -84,7 +88,6 @@
 
         <!-- Admin-only Users Table -->
         <div v-if="currentUser.role === 'admin'">
-          <!-- Filters -->
           <div class="row mb-3">
             <div class="col-md-6 mb-2">
               <input type="text" class="form-control" placeholder="Search by name or email" v-model="search" />
@@ -128,7 +131,6 @@
           </nav>
         </div>
 
-        <!-- Limited access message for regular users -->
         <div v-else>
           <p class="text-muted">You have limited access. Only admins can view detailed users data.</p>
         </div>
@@ -158,7 +160,7 @@ const error = ref('')
 const users = ref([])
 const currentUser = ref(null)
 
-// Filters & pagination for admin table
+// Filters & pagination
 const search = ref('')
 const selectedCountry = ref('')
 const currentPage = ref(1)
@@ -189,14 +191,14 @@ const userCount = computed(() => users.value.filter(u => u.role !== 'admin').len
 onMounted(async () => {
   const res = await fetch('/users.json')
   users.value = await res.json()
-
   const countryList = ['USA', 'UK', 'Canada', 'Germany', 'Australia']
   users.value.forEach(u => {
     if (!u.country) u.country = countryList[Math.floor(Math.random() * countryList.length)]
   })
-
   route.value = window.location.pathname
-  window.addEventListener('popstate', () => { route.value = window.location.pathname })
+  if (process.client) {
+    window.addEventListener('popstate', () => { route.value = window.location.pathname })
+  }
 })
 
 // Login
@@ -214,10 +216,35 @@ const handleLogin = () => {
 const handleLogout = () => {
   currentUser.value = null
   route.value = '/'
+  if (process.client) window.history.pushState({}, '', '/')
 }
 
-// Navigation
-const goTo = path => { route.value = path; if (process.client) window.history.pushState({}, '', path) }
+// SPA navigation
+const goTo = path => {
+  if (!currentUser.value) {
+    // Guests → normal
+    route.value = path
+    if (process.client) window.history.pushState({}, '', path)
+    return
+  }
+
+  // Logged-in users
+  if (path === '/') {
+    if (currentUser.value.role === 'admin') {
+      route.value = '/dashboard'
+      if (process.client) window.history.pushState({}, '', '/dashboard')
+    } else {
+      // Regular user → do nothing (href="#")
+      return
+    }
+  } else if (path === '/dashboard' && currentUser.value.role === 'admin') {
+    route.value = '/dashboard'
+    if (process.client) window.history.pushState({}, '', '/dashboard')
+  } else if (path === '/users' && currentUser.value.role !== 'admin') {
+    route.value = '/users'
+    if (process.client) window.history.pushState({}, '', '/users')
+  }
+}
 </script>
 
 <style scoped>
