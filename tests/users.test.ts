@@ -1,7 +1,7 @@
 /// <reference types="vitest" />
 import { mount } from '@vue/test-utils'
 import Users from '../app/users.vue'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 // All 20 users
 const users = [
@@ -28,17 +28,29 @@ const users = [
 ]
 
 describe('Users.vue', () => {
-  it('renders all users passed via initialUsers prop', () => {
+  beforeEach(() => {
+    // Stub global fetch to prevent real network requests
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        json: () => Promise.resolve([])
+      } as any)
+    ) as any
+  })
+
+  it('renders all users passed via initialUsers prop', async () => {
     const wrapper = mount(Users, { props: { initialUsers: users } })
+
+    // Wait for the DOM to update
+    await wrapper.vm.$nextTick()
 
     const text = wrapper.text()
 
-    // Verify that each user name appears in the rendered output
+    // Verify each user name appears
     users.forEach(user => {
       expect(text).toContain(user.name)
     })
 
-    // Verify total rendered table rows (users)
+    // Verify table row count
     const rows = wrapper.findAll('tbody tr')
     expect(rows).toHaveLength(users.length)
   })
