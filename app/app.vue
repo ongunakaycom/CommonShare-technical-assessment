@@ -15,12 +15,10 @@
 
         <div :class="['collapse navbar-collapse', { show: isOpen }]">
           <ul class="navbar-nav ms-auto">
-            <!-- Guest Home -->
             <li class="nav-item" v-if="!currentUser">
               <a class="nav-link" href="#" @click.prevent="goTo('/')">Home</a>
             </li>
 
-            <!-- Admin links -->
             <template v-if="currentUser && currentUser.role === 'admin'">
               <li class="nav-item">
                 <a class="nav-link" href="#" @click.prevent="goTo('/dashboard')">Dashboard</a>
@@ -28,17 +26,11 @@
               <li class="nav-item">
                 <a class="nav-link" href="#" @click.prevent="goTo('/users')">Users</a>
               </li>
-              <li class="nav-item">
-                <button class="btn btn-outline-danger ms-2" @click="handleLogout">Logout</button>
-              </li>
             </template>
 
-            <!-- Regular logged-in users -->
-            <template v-else-if="currentUser">
-              <li class="nav-item">
-                <button class="btn btn-outline-danger ms-2" @click="handleLogout">Logout</button>
-              </li>
-            </template>
+            <li class="nav-item" v-if="currentUser">
+              <button class="btn btn-outline-danger ms-2" @click="handleLogout">Logout</button>
+            </li>
           </ul>
         </div>
       </div>
@@ -75,7 +67,7 @@
 
       <!-- Dashboard -->
       <div v-else-if="route === '/dashboard'" class="container my-5">
-        <h1>Admin Dashboard</h1>
+        <h1>Dashboard</h1>
         <p>Welcome, {{ currentUser.name }}!</p>
         <div class="row mb-4">
           <div class="col-md-6">
@@ -96,8 +88,6 @@
       <!-- Users page (Admin only) -->
       <div v-else-if="route === '/users' && currentUser?.role === 'admin'" class="container my-5">
         <h1>All Users</h1>
-
-        <!-- Filters -->
         <div class="row mb-3">
           <div class="col-md-6 mb-2">
             <input type="text" class="form-control" placeholder="Search by name or email" v-model="search" />
@@ -110,7 +100,6 @@
           </div>
         </div>
 
-        <!-- Users Table -->
         <table class="table table-bordered shadow-sm">
           <thead class="table-light">
             <tr>
@@ -130,20 +119,18 @@
           </tbody>
         </table>
 
-        <!-- Pagination -->
         <nav>
           <ul class="pagination">
-            <li class="page-item" :class="{ disabled: currentPage === 1 }" @click="currentPage--">
+            <li class="page-item" :class="{ disabled: currentPage === 1 }" @click="prevPage">
               <a class="page-link" href="#">Previous</a>
             </li>
-            <li class="page-item" :class="{ disabled: currentPage === totalPages }" @click="currentPage++">
+            <li class="page-item" :class="{ disabled: currentPage === totalPages }" @click="nextPage">
               <a class="page-link" href="#">Next</a>
             </li>
           </ul>
         </nav>
       </div>
 
-      <!-- Access Denied -->
       <div v-else class="container my-5">
         <h2 class="text-danger">Access denied or page not found.</h2>
       </div>
@@ -157,7 +144,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 
 const route = ref('/')
 const isOpen = ref(false)
@@ -189,6 +176,7 @@ const paginatedUsers = computed(() => {
   return filteredUsers.value.slice(start, start + perPage)
 })
 
+const totalPages = computed(() => Math.ceil(filteredUsers.value.length / perPage))
 const countries = computed(() => [...new Set(users.value.map(u => u.country).filter(Boolean))])
 const adminCount = computed(() => users.value.filter(u => u.role === 'admin').length)
 const userCount = computed(() => users.value.filter(u => u.role !== 'admin').length)
@@ -210,51 +198,49 @@ onMounted(async () => {
 // Login
 const handleLogin = () => {
   const user = users.value.find(u => u.email === email.value && u.password === password.value)
-  if (!user) { error.value = 'Invalid email or password'; return }
-
+  if (!user) {
+    error.value = 'Invalid email or password'
+    return
+  }
   currentUser.value = user
   error.value = ''
-  route.value = user.role === 'admin' ? '/dashboard' : '/users'
-  if (process.client) window.history.pushState({}, '', route.value)
+  route.value = '/dashboard'
+  if (process.client) window.history.pushState({}, '', '/dashboard')
 }
 
-// Logout
-const handleLogout = () => {
-  currentUser.value = null
-  route.value = '/'
+// Logout (fixed)
+const handleLogout = async () => {
+  route.value = '/'         // redirect first
+  await nextTick()          // ensure DOM updates
+  currentUser.value = null  // clear user
   if (process.client) window.history.pushState({}, '', '/')
 }
 
 // SPA navigation
-const goTo = path => {
+const goTo = (path) => {
   if (!currentUser.value) {
     route.value = path
     if (process.client) window.history.pushState({}, '', path)
     return
   }
 
-  if (path === '/') {
-    if (currentUser.value.role === 'admin') {
-      route.value = '/dashboard'
-      if (process.client) window.history.pushState({}, '', '/dashboard')
-    } else {
-      return
-    }
-  } else if (path === '/dashboard' && currentUser.value.role === 'admin') {
+  if (currentUser.value.role === 'admin') {
+    if (path === '/users' || path === '/dashboard') route.value = path
+    else route.value = '/dashboard'
+  } else {
     route.value = '/dashboard'
-    if (process.client) window.history.pushState({}, '', '/dashboard')
-  } else if (path === '/users' && currentUser.value.role === 'admin') {
-    route.value = '/users'
-    if (process.client) window.history.pushState({}, '', '/users')
   }
+  if (process.client) window.history.pushState({}, '', route.value)
 }
+
+// Pagination helpers
+const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
+const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
 </script>
 
 <style scoped>
 .table { margin-top: 1rem; }
-.pagination { justify-content: center; margin-top: 1rem; }
+.pagination { justify-content: center; margin-top: 1rem; cursor: pointer; }
 .card { border-radius: 0.5rem; }
-@media (max-width: 400px) {
-  .card { margin: 1rem; padding: 1.5rem; }
-}
+@media (max-width: 400px) { .card { margin: 1rem; padding: 1.5rem; } }
 </style>
