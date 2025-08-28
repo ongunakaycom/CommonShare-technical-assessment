@@ -3,7 +3,6 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
       <div class="container">
-        <!-- MyApp / Home -->
         <a class="navbar-brand" href="#" @click.prevent="goTo('/')">MyApp</a>
         <button
           class="navbar-toggler"
@@ -16,16 +15,26 @@
 
         <div :class="['collapse navbar-collapse', { show: isOpen }]">
           <ul class="navbar-nav ms-auto">
-            <!-- Home link for guests only -->
+            <!-- Guest Home -->
             <li class="nav-item" v-if="!currentUser">
               <a class="nav-link" href="#" @click.prevent="goTo('/')">Home</a>
             </li>
 
-            <template v-if="currentUser">
-              <!-- Admin-only Users link -->
-              <li class="nav-item" v-if="currentUser.role === 'admin'">
-                <a class="nav-link" href="#" @click.prevent="goTo('/dashboard')">Users</a>
+            <!-- Admin links -->
+            <template v-if="currentUser && currentUser.role === 'admin'">
+              <li class="nav-item">
+                <a class="nav-link" href="#" @click.prevent="goTo('/dashboard')">Dashboard</a>
               </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#" @click.prevent="goTo('/users')">Users</a>
+              </li>
+              <li class="nav-item">
+                <button class="btn btn-outline-danger ms-2" @click="handleLogout">Logout</button>
+              </li>
+            </template>
+
+            <!-- Regular logged-in users -->
+            <template v-else-if="currentUser">
               <li class="nav-item">
                 <button class="btn btn-outline-danger ms-2" @click="handleLogout">Logout</button>
               </li>
@@ -50,11 +59,11 @@
               <form @submit.prevent="handleLogin">
                 <div class="mb-3">
                   <label for="email" class="form-label">Email</label>
-                  <input v-model="email" type="email" class="form-control" id="email" placeholder="Enter your email" required />
+                  <input v-model="email" type="email" class="form-control" placeholder="Enter your email" required />
                 </div>
                 <div class="mb-3">
                   <label for="password" class="form-label">Password</label>
-                  <input v-model="password" type="password" class="form-control" id="password" placeholder="Enter your password" required />
+                  <input v-model="password" type="password" class="form-control" placeholder="Enter your password" required />
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Login</button>
               </form>
@@ -64,13 +73,10 @@
         </div>
       </div>
 
-      <!-- Users / Dashboard Page -->
-      <div v-else-if="route === '/users' || route === '/dashboard'" class="container my-5">
-        <h1 v-if="route === '/dashboard' && currentUser.role === 'admin'">Admin Dashboard</h1>
-        <h1 v-else>User Dashboard</h1>
+      <!-- Dashboard -->
+      <div v-else-if="route === '/dashboard'" class="container my-5">
+        <h1>Admin Dashboard</h1>
         <p>Welcome, {{ currentUser.name }}!</p>
-
-        <!-- Dashboard Stats -->
         <div class="row mb-4">
           <div class="col-md-6">
             <div class="card shadow-sm p-3">
@@ -85,55 +91,56 @@
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Admin-only Users Table -->
-        <div v-if="currentUser.role === 'admin'">
-          <div class="row mb-3">
-            <div class="col-md-6 mb-2">
-              <input type="text" class="form-control" placeholder="Search by name or email" v-model="search" />
-            </div>
-            <div class="col-md-6 mb-2">
-              <select class="form-select" v-model="selectedCountry">
-                <option value="">All Countries</option>
-                <option v-for="c in countries" :key="c" :value="c">{{ c }}</option>
-              </select>
-            </div>
+      <!-- Users page (Admin only) -->
+      <div v-else-if="route === '/users' && currentUser?.role === 'admin'" class="container my-5">
+        <h1>All Users</h1>
+
+        <!-- Filters -->
+        <div class="row mb-3">
+          <div class="col-md-6 mb-2">
+            <input type="text" class="form-control" placeholder="Search by name or email" v-model="search" />
           </div>
-
-          <table class="table table-bordered shadow-sm">
-            <thead class="table-light">
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Country</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="user in paginatedUsers" :key="user.id">
-                <td>{{ user.name }}</td>
-                <td>{{ user.email }}</td>
-                <td>{{ user.role }}</td>
-                <td>{{ user.country || 'N/A' }}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <nav>
-            <ul class="pagination">
-              <li class="page-item" :class="{ disabled: currentPage === 1 }" @click="currentPage--">
-                <a class="page-link" href="#">Previous</a>
-              </li>
-              <li class="page-item" :class="{ disabled: currentPage === totalPages }" @click="currentPage++">
-                <a class="page-link" href="#">Next</a>
-              </li>
-            </ul>
-          </nav>
+          <div class="col-md-6 mb-2">
+            <select class="form-select" v-model="selectedCountry">
+              <option value="">All Countries</option>
+              <option v-for="c in countries" :key="c" :value="c">{{ c }}</option>
+            </select>
+          </div>
         </div>
 
-        <div v-else>
-          <p class="text-muted">You have limited access. Only admins can view detailed users data.</p>
-        </div>
+        <!-- Users Table -->
+        <table class="table table-bordered shadow-sm">
+          <thead class="table-light">
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Country</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="user in paginatedUsers" :key="user.id">
+              <td>{{ user.name }}</td>
+              <td>{{ user.email }}</td>
+              <td>{{ user.role }}</td>
+              <td>{{ user.country || 'N/A' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <nav>
+          <ul class="pagination">
+            <li class="page-item" :class="{ disabled: currentPage === 1 }" @click="currentPage--">
+              <a class="page-link" href="#">Previous</a>
+            </li>
+            <li class="page-item" :class="{ disabled: currentPage === totalPages }" @click="currentPage++">
+              <a class="page-link" href="#">Next</a>
+            </li>
+          </ul>
+        </nav>
       </div>
 
       <!-- Access Denied -->
@@ -177,7 +184,6 @@ const filteredUsers = computed(() =>
   })
 )
 
-const totalPages = computed(() => Math.ceil(filteredUsers.value.length / perPage))
 const paginatedUsers = computed(() => {
   const start = (currentPage.value - 1) * perPage
   return filteredUsers.value.slice(start, start + perPage)
@@ -222,25 +228,22 @@ const handleLogout = () => {
 // SPA navigation
 const goTo = path => {
   if (!currentUser.value) {
-    // Guests → normal
     route.value = path
     if (process.client) window.history.pushState({}, '', path)
     return
   }
 
-  // Logged-in users
   if (path === '/') {
     if (currentUser.value.role === 'admin') {
       route.value = '/dashboard'
       if (process.client) window.history.pushState({}, '', '/dashboard')
     } else {
-      // Regular user → do nothing (href="#")
       return
     }
   } else if (path === '/dashboard' && currentUser.value.role === 'admin') {
     route.value = '/dashboard'
     if (process.client) window.history.pushState({}, '', '/dashboard')
-  } else if (path === '/users' && currentUser.value.role !== 'admin') {
+  } else if (path === '/users' && currentUser.value.role === 'admin') {
     route.value = '/users'
     if (process.client) window.history.pushState({}, '', '/users')
   }
