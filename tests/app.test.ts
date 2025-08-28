@@ -24,8 +24,9 @@ describe('App.vue - login all users', () => {
     const vm = wrapper.vm as any
 
     for (const user of users) {
-      // Fill login form
-      await wrapper.setData({ email: user.email, password: user.password })
+      // Set refs directly (email and password are refs in <script setup>)
+      vm.email = user.email
+      vm.password = user.password
       await wrapper.find('form').trigger('submit.prevent')
 
       // Assert login success
