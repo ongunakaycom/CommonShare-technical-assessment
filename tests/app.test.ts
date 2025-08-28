@@ -1,7 +1,7 @@
 /// <reference types="vitest" />
 import { mount } from '@vue/test-utils'
 import { describe, it, expect } from 'vitest'
-import App from '../app/App.vue'
+import App from '../app/app.vue'
 
 // All 20 users
 const users = [
