@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import App from '../app/app.vue'
 import fs from 'fs'
 import path from 'path'
+import { nextTick } from 'vue'
 
 // Read the JSON file from public/users.json
 const usersFile = path.resolve(__dirname, '../public/users.json')
@@ -20,14 +21,20 @@ beforeEach(() => {
 describe('App.vue - login all users', () => {
   it('should allow all users to log in successfully', async () => {
     const wrapper = mount(App)
-
     const vm = wrapper.vm as any
 
+    // Wait for onMounted fetch to complete
+    await nextTick()
+    await nextTick() // double tick to ensure users are loaded
+
     for (const user of users) {
-      // Set refs directly (email and password are refs in <script setup>)
+      // Set form fields directly
       vm.email = user.email
       vm.password = user.password
+
+      // Trigger login
       await wrapper.find('form').trigger('submit.prevent')
+      await nextTick() // wait for state changes
 
       // Assert login success
       expect(vm.currentUser).toBeDefined()
@@ -36,6 +43,8 @@ describe('App.vue - login all users', () => {
 
       // Logout before next iteration
       await wrapper.find('button.btn-outline-danger').trigger('click')
+      await nextTick() // wait for logout updates
+
       expect(vm.currentUser).toBeNull()
       expect(vm.route).toBe('/')
     }
